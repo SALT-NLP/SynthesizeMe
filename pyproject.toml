@@ -34,7 +34,7 @@ include = ["synthesizeme", "synthesizeme.*"]
 exclude = ["tests", "tests.*"]
 
 [tool.setuptools.package-data]
-synthesizeme = ["primitives/*.js"]
+synthesizeme = ["primitives/*.js", "prompts/*"]
 
 [project.optional-dependencies]
 anthropic = ["anthropic>=0.18.0,<1.0.0"]
