@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Do not add spaces around the '=' sign for any of the fields
+# preceeded by a marker comment as it affects the publish workflow.
+#replace_package_name_marker
+name="synthesize-me"
+#replace_package_version_marker
+version="0.0.1"
+description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
+readme = "README.md"
+authors = [{ name = "Michael Ryan", email = "michaeljryan@stanford.edu" }]
+license = { text = "MIT License" }
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+# project dependencies function similarly to requirements.txt,
+# `pip install .` will pull from pyproject.toml dependencies
+dependencies = [
+    "dspy",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["synthesizeme", "synthesizeme.*"]
+exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+synthesizeme = ["primitives/*.js"]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.18.0,<1.0.0"]
+
+[project.urls]
+homepage = "https://github.com/XenonMolecule/SynthesizeMe"
+
+[tool.poetry]
+name = "synthesizeme"
+version = "0.0.1"
+description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
+authors = ["Michael Ryan <michaeljryan@stanford.edu>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/XenonMolecule/SynthesizeMe"
+repository = "https://github.com/XenonMolecule/SynthesizeMe"
+keywords = ["synthesizeme", "ai", "language models", "llm", "personalization"]
+
+# may be a bit much
+[tool.poetry.dependencies]
+python = ">=3.9,<3.14"
+dspy = ">=2.6"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/__init__.py",
+    "*/test_*.py",
+    "*/tests/*.py",
+    "*/conftest.py",
+    "*/venv/*",
+    "*/virtualenv/*",
+    "*/.venv/*",
+    "*/.virtualenv/*",
+    "*/env/*",
+    "*/.env/*",
+    "*/setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == '__main__':",
+    "logger",
+    "try",
+    "except",
+    "^\\s*self\\.\\w+(:\\s*[^=]+)?\\s*=.*$",
+    "continue",
+]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+# Select a minimal set of rules
+select = [
+    "F", # Pyflakes
+    "E", # Pycodestyle
+    "TID252", # Absolute imports
+
+]
+ignore = [
+    "E501", # Line too long
+
+]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+docstring-code-format = false
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint.per-file-ignores]
+"**/{tests,testing,docs}/*" = ["ALL"]
+"**__init__.py" = ["ALL"]
