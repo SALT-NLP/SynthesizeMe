@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Do not add spaces around the '=' sign for any of the fields
 # preceeded by a marker comment as it affects the publish workflow.
 #replace_package_name_marker
-name="synthesize-me"
+name="SynthesizeMe"
 #replace_package_version_marker
 version="0.0.1"
 description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
