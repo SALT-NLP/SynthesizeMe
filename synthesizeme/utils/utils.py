@@ -1,8 +1,8 @@
 import os
 import random
+import dspy
 import pandas as pd
 
-from dspy import LM, configure, Example, settings
 from dotenv import load_dotenv
 from synthesizeme.utils.format_conv import format_conversation
 
@@ -22,27 +22,27 @@ def setup(model="azure/gpt-4o-mini-240718", local_api_base="http://localhost:741
     lm = None
 
     if model.startswith("azure"):
-        lm = LM(model, api_base=azure_base, api_key=azure_key, api_version=azure_version, max_tokens=8192)
+        lm = dspy.LM(model, api_base=azure_base, api_key=azure_key, api_version=azure_version, max_tokens=8192)
     elif model.startswith("openai"):
-        lm = LM(model, api_key=openai_key, tpm=200000, rpm=500, max_tokens=8192)
+        lm = dspy.LM(model, api_key=openai_key, tpm=200000, rpm=500, max_tokens=8192)
     elif model.startswith("together"):
-        lm = LM(model, api_key=together_key, max_tokens=8192)
+        lm = dspy.LM(model, api_key=together_key, max_tokens=8192)
     elif model.startswith("gemini"):
-        lm = LM(model, api_key=gemini_key, max_tokens=8192)
+        lm = dspy.LM(model, api_key=gemini_key, max_tokens=8192)
     else:
         model = f"litellm_proxy/{model}"
-        lm = LM(model,
+        lm = dspy.LM(model,
              api_base=local_api_base,
              api_key="local", model_type='chat', max_tokens=8192)
 
-    configure(lm=lm)
+    dspy.configure(lm=lm)
 
     return lm
 
 def flip_augmentation(dspy_data):
     for example in dspy_data:
         yield example
-        yield Example({
+        yield dspy.Example({
             "conversation": example.conversation,
             "completion_one": example.completion_two,
             "completion_two": example.completion_one,
@@ -58,7 +58,7 @@ def flip_augmentation(dspy_data):
 def convert_df_to_dspy(df, user_id=None):
     for i, row in df.iterrows():
         flip = row["flip"] if "flip" in row else False
-        yield Example({
+        yield dspy.Example({
             "conversation": format_conversation(row["context"]),
             "completion_one": format_conversation(row["chosen"]) if flip else format_conversation(row["rejected"]),
             "completion_two": format_conversation(row["rejected"]) if flip else format_conversation(row["chosen"]),
@@ -77,7 +77,7 @@ def convert_user_df_to_dspy(df):
         df_val = df_user[df_user["split"] == "val"]
         df_test = df_user[df_user["split"] == "test"]
 
-        yield Example({
+        yield dspy.Example({
             "user_train": list(convert_df_to_dspy(df_train, user)),
             "user_val": list(flip_augmentation(convert_df_to_dspy(df_val, user))),
             "user_test": list(flip_augmentation(convert_df_to_dspy(df_test, user))),
@@ -111,16 +111,16 @@ def get_exact_match_func_save():
     return exact_match_store_output, get_output
 
 def repeat_dspy_call(call, n=4, **kwargs):
-    preserved_temperature = settings.lm.kwargs["temperature"]
+    preserved_temperature = dspy.settings.lm.kwargs["temperature"]
     results = None
     for i in range(n):
         try:
-            settings.lm.kwargs["temperature"] = preserved_temperature * (0.001 + i / n)
+            dspy.settings.lm.kwargs["temperature"] = preserved_temperature * (0.001 + i / n)
             results = call(**kwargs)
             break # if successful, break
         except Exception as e: 
             print(f"Attempt {i + 1} failed: {e}")
-    settings.lm.kwargs["temperature"] = preserved_temperature
+    dspy.settings.lm.kwargs["temperature"] = preserved_temperature
     return results
 
 def exact_match(gold, pred, trace=None):
