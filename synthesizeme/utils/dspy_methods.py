@@ -1,4 +1,4 @@
-import dspy
+from dspy import Signature, Module, InputField, OutputField, ChainOfThought, Prediction
 import os
 
 from synthesizeme.teleprompt.random_search import BootstrapFewShotWithRandomSearchFast
@@ -7,48 +7,47 @@ from typing import Literal
 
 DEFAULT_PERSONA_PROMPT = """Given a conversation and two completions from different models, alongside some prior judgements and a user persona, determine which completion the human judge is more likely to prefer.  Use any provided context as well as the provided persona to speculate about the personal preferences of the judge.  You are a personalized reward model for this user, so think carefully about what this user will like."""
 
-class LLMAsAJudge(dspy.Signature):
+class LLMAsAJudge(Signature):
     """Given a conversation and two completions from different models, determine which completion the human judge is more likely to prefer.  Use any provided context to learn about the personal preferences of the judge before making a decision.  If no context is provided it can be useful to speculate about the preferences of the judge.  It's okay to be wrong, let's explore the space of possibilities and hypothesize about what might be true.  Please hypothesize between 1-3 speculations about the judge's preferences or persona when reasoning.  Draw from the context of the conversation and the completions as well as the user written statements to make your decision."""
-    conversation: str = dspy.InputField(desc="The conversation context leading up to the completions.")
-    first_completion: str = dspy.InputField(desc="The first of the two possible completions to judge between.")
-    second_completion: str = dspy.InputField(desc="The second of the two possible completions to judge between.")
-    preference: Literal['First', 'Second'] = dspy.OutputField(desc="The completion that the judge is more likely to prefer.  Possible values are 'First' and 'Second'.")
+    conversation: str = InputField(desc="The conversation context leading up to the completions.")
+    first_completion: str = InputField(desc="The first of the two possible completions to judge between.")
+    second_completion: str = InputField(desc="The second of the two possible completions to judge between.")
+    preference: Literal['First', 'Second'] = OutputField(desc="The completion that the judge is more likely to prefer.  Possible values are 'First' and 'Second'.")
 
-class LLMAsAJudgeProgram(dspy.Module):
+class LLMAsAJudgeProgram(Module):
     def __init__(self):
         super().__init__()
-        self.judge = dspy.ChainOfThought(LLMAsAJudge)
+        self.judge = ChainOfThought(LLMAsAJudge)
 
     def forward(self,conversation, completion_one, completion_two):
         prediction = None
         prediction = repeat_dspy_call(self.judge, n=4, conversation=conversation, first_completion=completion_one, second_completion=completion_two)
         if prediction is None:
-            # dspy.settings.lm.inspect_history(n=2)
-            return dspy.Prediction(reasoning="Error", preference="Tie", output="Error")
+            return Prediction(reasoning="Error", preference="Tie", output="Error")
         
         if "First" in prediction.preference and not "Second" in prediction.preference:
-            return dspy.Prediction(reasoning=prediction.reasoning, preference="First")
+            return Prediction(reasoning=prediction.reasoning, preference="First")
         elif "Second" in prediction.preference and not "First" in prediction.preference:
-            return dspy.Prediction(reasoning=prediction.reasoning, preference="Second")
+            return Prediction(reasoning=prediction.reasoning, preference="Second")
         else:
-            return dspy.Prediction(reasoning=prediction.reasoning, preference="Tie")
+            return Prediction(reasoning=prediction.reasoning, preference="Tie")
 
-class LLMAsAJudgePersonaInformed(dspy.Signature):
+class LLMAsAJudgePersonaInformed(Signature):
     """Given a conversation and two completions from different models, alongside some prior judgements and a user persona, determine which completion the human judge is more likely to prefer.  Use any provided context as well as the provided persona to speculate about the personal preferences of the judge.  You are serving as a personalized reward model for this user, so think carefully about what this user will like."""
-    conversation:str = dspy.InputField(desc="The conversation context leading up to the completions.")
-    first_completion:str = dspy.InputField(desc="The first of the two possible completions to judge between.")
-    second_completion:str = dspy.InputField(desc="The second of the two possible completions to judge between.")
-    preference:Literal['First', 'Second'] = dspy.OutputField(desc="The completion that the judge is more likely to prefer.  Possible values are 'First' and 'Second'.")
+    conversation:str = InputField(desc="The conversation context leading up to the completions.")
+    first_completion:str = InputField(desc="The first of the two possible completions to judge between.")
+    second_completion:str = InputField(desc="The second of the two possible completions to judge between.")
+    preference:Literal['First', 'Second'] = OutputField(desc="The completion that the judge is more likely to prefer.  Possible values are 'First' and 'Second'.")
 
-class SynthesizePersona(dspy.Signature):
+class SynthesizePersona(Signature):
     """Given a set of user judgements on prior conversations, as well as reasoning for those judgements, concisely build a user persona that can be used to describe the preferences of this person and anything we might know about them."""
-    past_judgements:str = dspy.InputField(desc="A set of user judgements on prior conversations alongside reasoning for those judgements.")
-    synthesized_persona:str = dspy.OutputField(desc="A synthesized user persona that can be used to inform future judgements.")
+    past_judgements:str = InputField(desc="A set of user judgements on prior conversations alongside reasoning for those judgements.")
+    synthesized_persona:str = OutputField(desc="A synthesized user persona that can be used to inform future judgements.")
 
-class GeneratePersonaProgram(dspy.Module):
+class GeneratePersonaProgram(Module):
     def __init__(self, output_dir=None, max_bootstrapped_demos=2147483647, max_labeled_demos=4, num_threads_inner=1, num_candidates=10, stop_at_score=80.0, num_workers_bootstrap=24):
         super().__init__()
-        self.synthesize = dspy.ChainOfThought(SynthesizePersona)
+        self.synthesize = ChainOfThought(SynthesizePersona)
         self.output_dir = output_dir
         self.max_bootstrapped_demos = max_bootstrapped_demos
         self.max_labeled_demos = max_labeled_demos
@@ -109,9 +108,9 @@ class GeneratePersonaProgram(dspy.Module):
         synthesized_persona = self.synthesize(past_judgements=history_str)
 
         # Return the synthesized persona
-        return dspy.Prediction(persona=synthesized_persona.synthesized_persona, reasoning=synthesized_persona.reasoning)
+        return Prediction(persona=synthesized_persona.synthesized_persona, reasoning=synthesized_persona.reasoning)
     
-class LLMAsAJudgeProgramPersona(dspy.Module):
+class LLMAsAJudgeProgramPersona(Module):
     def __init__(self, persona):
         super().__init__()
 
@@ -121,19 +120,18 @@ class LLMAsAJudgeProgramPersona(dspy.Module):
 
         PersonalizedSignature = type("PersonalizedSignature", (LLMAsAJudgePersonaInformed,), {"__doc__": custom_prompt})
 
-        self.judge_persona = dspy.ChainOfThought(PersonalizedSignature)
+        self.judge_persona = ChainOfThought(PersonalizedSignature)
         self.persona = persona
 
     def forward(self,conversation, completion_one, completion_two):
         prediction = repeat_dspy_call(self.judge_persona, n=4, conversation=conversation, first_completion=completion_one, second_completion=completion_two)
 
         if prediction is None:
-            # dspy.settings.lm.inspect_history(n=2)
-            return dspy.Prediction(reasoning="Error", preference="Tie", output="Error")
+            return Prediction(reasoning="Error", preference="Tie", output="Error")
 
         if "First" in prediction.preference and not "Second" in prediction.preference:
-            return dspy.Prediction(reasoning=prediction.reasoning, preference="First")
+            return Prediction(reasoning=prediction.reasoning, preference="First")
         elif "Second" in prediction.preference and not "First" in prediction.preference:
-            return dspy.Prediction(reasoning=prediction.reasoning, preference="Second")
+            return Prediction(reasoning=prediction.reasoning, preference="Second")
         else:
-            return dspy.Prediction(reasoning=prediction.reasoning, preference="Tie")
+            return Prediction(reasoning=prediction.reasoning, preference="Tie")
