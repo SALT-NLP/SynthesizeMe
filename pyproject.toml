@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 #replace_package_name_marker
 name="SynthesizeMe"
 #replace_package_version_marker
-version="0.0.5-alpha"
+version="0.0.5-alpha.2"
 description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
 readme = "README.md"
 authors = [{ name = "Michael Ryan", email = "michaeljryan@stanford.edu" }]
@@ -44,7 +44,7 @@ homepage = "https://github.com/XenonMolecule/SynthesizeMe"
 
 [tool.poetry]
 name = "synthesizeme"
-version = "0.0.5-alpha"
+version = "0.0.5-alpha.2"
 description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
 authors = ["Michael Ryan <michaeljryan@stanford.edu>"]
 license = "MIT"
