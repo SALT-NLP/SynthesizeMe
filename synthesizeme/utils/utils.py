@@ -22,18 +22,18 @@ def setup(model="azure/gpt-4o-mini-240718", local_api_base="http://localhost:741
     lm = None
 
     if model.startswith("azure"):
-        lm = dspy.LM(model, api_base=azure_base, api_key=azure_key, api_version=azure_version, max_tokens=4096)
+        lm = dspy.LM(model, api_base=azure_base, api_key=azure_key, api_version=azure_version, max_tokens=8192)
     elif model.startswith("openai"):
-        lm = dspy.LM(model, api_key=openai_key, tpm=200000, rpm=500, max_tokens=4096)
+        lm = dspy.LM(model, api_key=openai_key, tpm=200000, rpm=500, max_tokens=8192)
     elif model.startswith("together"):
-        lm = dspy.LM(model, api_key=together_key, max_tokens=4096)
+        lm = dspy.LM(model, api_key=together_key, max_tokens=8192)
     elif model.startswith("gemini"):
-        lm = dspy.LM(model, api_key=gemini_key, max_tokens=4096)
+        lm = dspy.LM(model, api_key=gemini_key, max_tokens=8192)
     else:
         model = f"litellm_proxy/{model}"
         lm = dspy.LM(model,
              api_base=local_api_base,
-             api_key="local", model_type='chat', max_tokens=4096)
+             api_key="local", model_type='chat', max_tokens=8192)
 
     dspy.configure(lm=lm)
 

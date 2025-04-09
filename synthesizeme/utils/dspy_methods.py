@@ -1,7 +1,7 @@
 import dspy
 import os
 
-from dspy.teleprompt import BootstrapFewShotWithRandomSearch
+from synthesizeme.teleprompt.random_search import BootstrapFewShotWithRandomSearchFast
 from synthesizeme.utils.utils import exact_match, repeat_dspy_call
 from typing import Literal
 
@@ -46,7 +46,7 @@ class SynthesizePersona(dspy.Signature):
     synthesized_persona:str = dspy.OutputField(desc="A synthesized user persona that can be used to inform future judgements.")
 
 class GeneratePersonaProgram(dspy.Module):
-    def __init__(self, output_dir=None, max_bootstrapped_demos=2147483647, max_labeled_demos=4, num_threads_inner=1, num_candidates=10, stop_at_score=80.0):
+    def __init__(self, output_dir=None, max_bootstrapped_demos=2147483647, max_labeled_demos=4, num_threads_inner=1, num_candidates=10, stop_at_score=80.0, num_workers_bootstrap=24):
         super().__init__()
         self.synthesize = dspy.ChainOfThought(SynthesizePersona)
         self.output_dir = output_dir
@@ -55,17 +55,19 @@ class GeneratePersonaProgram(dspy.Module):
         self.num_threads_inner = num_threads_inner
         self.num_candidates = num_candidates
         self.stop_at_score = stop_at_score
+        self.num_workers_bootstrap = num_workers_bootstrap
         
     def forward(self, user_train, user_val, user_id):
 
         # Bootstrap reasoning to build up a user persona from training data
-        bootstrap_optimizer = BootstrapFewShotWithRandomSearch(
+        bootstrap_optimizer = BootstrapFewShotWithRandomSearchFast(
             max_bootstrapped_demos=min(self.max_bootstrapped_demos, len(user_train)),
             max_labeled_demos=min(self.max_labeled_demos, len(user_train)),
             num_candidate_programs=self.num_candidates, # TODO: We may want to tweak this parameter
             num_threads=self.num_threads_inner,
             stop_at_score=self.stop_at_score,
             metric=exact_match,
+            num_workers=self.num_workers_bootstrap,
         )
 
         program = LLMAsAJudgeProgram()

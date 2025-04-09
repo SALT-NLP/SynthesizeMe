@@ -7,7 +7,7 @@ import os
 from synthesizeme.personalrm.personalrm import PersonalRM
 from synthesizeme.utils.utils import setup, exact_match, convert_df_to_dspy
 from synthesizeme.utils.dspy_methods import GeneratePersonaProgram, LLMAsAJudgeProgramPersona, LLMAsAJudgeProgram
-from dspy.teleprompt import BootstrapFewShotWithRandomSearch
+from synthesizeme.teleprompt.random_search import BootstrapFewShotWithRandomSearchFast
 from platformdirs import user_data_dir
 
 class Unimplemented():
@@ -16,7 +16,7 @@ class Unimplemented():
 
 class SynthesizeMe(PersonalRM):
 
-    def __init__(self, user_id=None, train_val_ratio=0.7, max_bootstrapped_demos=-1, max_labeled_demos=4, num_search_candidates=10, output_dir=None, model_id="litellm_proxy/meta-llama/Llama-3.3-70B-Instruct", model_url="http://localhost:7410/v1", seed=42, stop_at_score=80.0, num_workers=8, persona_synthesis_program_path=None, lm=None):
+    def __init__(self, user_id=None, train_val_ratio=0.7, max_bootstrapped_demos=-1, max_labeled_demos=4, num_search_candidates=10, output_dir=None, model_id="litellm_proxy/meta-llama/Llama-3.3-70B-Instruct", model_url="http://localhost:7410/v1", seed=42, stop_at_score=80.0, num_workers=8, persona_synthesis_program_path=None, lm=None, num_workers_bootstrap=24):
         """
         Initialize the SynthesizeMe class.
 
@@ -34,6 +34,7 @@ class SynthesizeMe(PersonalRM):
             seed (int): Random seed.
             stop_at_score (float): Stop the optimization when the score reaches this value.
             num_workers (int): Number of threads to use for the optimization.
+            num_workers_bootstrap (int): Number of threads to use for the bootstrapping.
             persona_synthesis_program_path (str): Path to the precomputed persona synthesis program.  If None, will generate a new one.
             lm (dspy.LM): Language model to use.  If None, will use the setup function to create a new one.
 
@@ -65,6 +66,7 @@ class SynthesizeMe(PersonalRM):
         self.num_workers = num_workers
         self.persona_synthesis_program_path = persona_synthesis_program_path
         self.lm = lm
+        self.num_workers_bootstrap = num_workers_bootstrap
 
         self.program = Unimplemented()
 
@@ -101,7 +103,7 @@ class SynthesizeMe(PersonalRM):
             raise ValueError("Not enough preferences for validation.")
 
         # First generate the persona
-        generate_persona = GeneratePersonaProgram(output_dir=self.output_dir, max_bootstrapped_demos=max_bootstrapped_demos, max_labeled_demos=max_labeled_demos, num_threads_inner=self.num_workers, num_candidates=self.num_search_candidates, stop_at_score=self.stop_at_score)
+        generate_persona = GeneratePersonaProgram(output_dir=self.output_dir, max_bootstrapped_demos=max_bootstrapped_demos, max_labeled_demos=max_labeled_demos, num_threads_inner=self.num_workers, num_candidates=self.num_search_candidates, stop_at_score=self.stop_at_score, num_workers_bootstrap=self.num_workers_bootstrap)
 
         if self.persona_synthesis_program_path is not None:
             generate_persona.load(self.persona_synthesis_program_path)
@@ -114,13 +116,14 @@ class SynthesizeMe(PersonalRM):
 
         # Now we need to optimize the demonstrations
 
-        bootstrap_optimizer = BootstrapFewShotWithRandomSearch(
+        bootstrap_optimizer = BootstrapFewShotWithRandomSearchFast(
             max_bootstrapped_demos=min(max_bootstrapped_demos, len(train_preferences)),
             max_labeled_demos=min(max_labeled_demos, len(train_preferences)),
             num_candidate_programs=self.num_search_candidates,
             num_threads=self.num_workers,
             stop_at_score=self.stop_at_score,
             metric=exact_match,
+            num_workers=self.num_workers_bootstrap,
         )
 
         program = LLMAsAJudgeProgramPersona(persona.persona)
