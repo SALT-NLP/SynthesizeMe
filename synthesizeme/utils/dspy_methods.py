@@ -45,7 +45,7 @@ class SynthesizePersona(dspy.Signature):
     synthesized_persona:str = dspy.OutputField(desc="A synthesized user persona that can be used to inform future judgements.")
 
 class GeneratePersonaProgram(dspy.Module):
-    def __init__(self, output_dir=None, max_bootstrapped_demos=2147483647, max_labeled_demos=4, num_threads_inner=1, num_candidates=10, stop_at_score=80.0, num_workers_bootstrap=24):
+    def __init__(self, output_dir=None, max_bootstrapped_demos=2147483647, max_labeled_demos=4, num_threads_inner=1, num_candidates=10, stop_at_score=80.0, num_workers_bootstrap=24, progress_update_hook=None):
         super().__init__()
         self.synthesize = dspy.ChainOfThought(SynthesizePersona)
         self.output_dir = output_dir
@@ -55,8 +55,16 @@ class GeneratePersonaProgram(dspy.Module):
         self.num_candidates = num_candidates
         self.stop_at_score = stop_at_score
         self.num_workers_bootstrap = num_workers_bootstrap
+        self.progress_update_hook = progress_update_hook
         
     def forward(self, user_train, user_val, user_id):
+
+        amount_completed = 0
+        def update_progress(score, seed, program):
+            nonlocal amount_completed
+            amount_completed += 1
+            if self.progress_update_hook is not None:
+                self.progress_update_hook((amount_completed / (self.num_candidates + 3)) * 50.0, f"Tested {amount_completed} potential demo sets.")
 
         # Bootstrap reasoning to build up a user persona from training data
         bootstrap_optimizer = BootstrapFewShotWithRandomSearchFast(
@@ -67,6 +75,7 @@ class GeneratePersonaProgram(dspy.Module):
             stop_at_score=self.stop_at_score,
             metric=exact_match,
             num_workers=self.num_workers_bootstrap,
+            on_eval_complete=update_progress
         )
 
         program = LLMAsAJudgeProgram()
@@ -104,8 +113,14 @@ class GeneratePersonaProgram(dspy.Module):
             with open(self.output_dir + f"{user_id}.history", "w") as f:
                 f.write(history_str)
 
+        if self.progress_update_hook is not None:
+            self.progress_update_hook(50.0, f"Synthesizing Persona based on bootstrapped reasoning.")
+
         # Synthesize a persona from the bootstrapped reasoning
         synthesized_persona = self.synthesize(past_judgements=history_str)
+
+        if self.progress_update_hook is not None:
+            self.progress_update_hook(50.0, f"Done synthesizing persona based on bootstrapped reasoning.")
 
         # Return the synthesized persona
         return dspy.Prediction(persona=synthesized_persona.synthesized_persona, reasoning=synthesized_persona.reasoning)

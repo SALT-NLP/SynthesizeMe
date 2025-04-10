@@ -17,7 +17,7 @@ class Unimplemented():
 
 class SynthesizeMe(PersonalRM):
 
-    def __init__(self, user_id=None, train_val_ratio=0.7, max_bootstrapped_demos=-1, max_labeled_demos=4, num_search_candidates=10, output_dir=None, model_id="litellm_proxy/meta-llama/Llama-3.3-70B-Instruct", model_url="http://localhost:7410/v1", seed=42, stop_at_score=80.0, num_workers=8, persona_synthesis_program_path=None, lm=None, num_workers_bootstrap=24):
+    def __init__(self, user_id=None, train_val_ratio=0.7, max_bootstrapped_demos=-1, max_labeled_demos=4, num_search_candidates=10, output_dir=None, model_id="litellm_proxy/meta-llama/Llama-3.3-70B-Instruct", model_url="http://localhost:7410/v1", seed=42, stop_at_score=80.0, num_workers=8, persona_synthesis_program_path=None, lm=None, num_workers_bootstrap=24, progress_update_hook=None):
         """
         Initialize the SynthesizeMe class.
 
@@ -38,6 +38,8 @@ class SynthesizeMe(PersonalRM):
             num_workers_bootstrap (int): Number of threads to use for the bootstrapping.
             persona_synthesis_program_path (str): Path to the precomputed persona synthesis program.  If None, will generate a new one.
             lm (dspy.LM): Language model to use.  If None, will use the setup function to create a new one.
+            num_workers_bootstrap (int): Number of threads to use for the bootstrapping.
+            progress_update_hook (function): A function to call for progress updates.
 
         Returns:
             None
@@ -68,6 +70,7 @@ class SynthesizeMe(PersonalRM):
         self.persona_synthesis_program_path = persona_synthesis_program_path
         self.lm = lm
         self.num_workers_bootstrap = num_workers_bootstrap
+        self.progress_update_hook = progress_update_hook
 
         self.program = Unimplemented()
 
@@ -104,7 +107,7 @@ class SynthesizeMe(PersonalRM):
             raise ValueError("Not enough preferences for validation.")
 
         # First generate the persona
-        generate_persona = GeneratePersonaProgram(output_dir=self.output_dir, max_bootstrapped_demos=max_bootstrapped_demos, max_labeled_demos=max_labeled_demos, num_threads_inner=self.num_workers, num_candidates=self.num_search_candidates, stop_at_score=self.stop_at_score, num_workers_bootstrap=self.num_workers_bootstrap)
+        generate_persona = GeneratePersonaProgram(output_dir=self.output_dir, max_bootstrapped_demos=max_bootstrapped_demos, max_labeled_demos=max_labeled_demos, num_threads_inner=self.num_workers, num_candidates=self.num_search_candidates, stop_at_score=self.stop_at_score, num_workers_bootstrap=self.num_workers_bootstrap, progress_update_hook=self.progress_update_hook)
 
         if self.persona_synthesis_program_path is not None:
             generate_persona.load(self.persona_synthesis_program_path)
@@ -114,6 +117,13 @@ class SynthesizeMe(PersonalRM):
         val_preferences = list(convert_df_to_dspy(pd.DataFrame(val_preferences)))
 
         persona = generate_persona(user_train=train_preferences, user_val=val_preferences, user_id=self.user_id)
+
+        amount_completed = 0
+        def update_progress(score, seed, program):
+            nonlocal amount_completed
+            amount_completed += 1
+            if self.progress_update_hook is not None:
+                self.progress_update_hook((amount_completed / (self.num_search_candidates + 3)) * 50.0 + 50.0, f"Tested {amount_completed} potential demo sets with persona.")
 
         # Now we need to optimize the demonstrations
 
@@ -125,6 +135,7 @@ class SynthesizeMe(PersonalRM):
             stop_at_score=self.stop_at_score,
             metric=exact_match,
             num_workers=self.num_workers_bootstrap,
+            on_eval_complete=update_progress
         )
 
         program = LLMAsAJudgeProgramPersona(persona.persona)

@@ -20,7 +20,8 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
         max_errors=10,
         stop_at_score=None,
         metric_threshold=None,
-        num_workers=20
+        num_workers=20,
+        on_eval_complete=None,
     ):
         self.metric = metric
         self.teacher_settings = teacher_settings
@@ -35,6 +36,7 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
         self.max_errors = max_errors
         self.num_candidate_sets = num_candidate_programs
         self.max_labeled_demos = max_labeled_demos
+        self.on_eval_complete = on_eval_complete
 
         print(f"Going to sample between {self.min_num_samples} and {self.max_num_samples} traces per predictor.")
         print(f"Will attempt to bootstrap {self.num_candidate_sets} candidate sets.")
@@ -119,6 +121,9 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
                 score = score - program._suggest_failures * 0.2
             if hasattr(program, "_assert_failures"):
                 score = 0 if program._assert_failures > 0 else score
+
+            if self.on_eval_complete:
+                self.on_eval_complete(score, seed, program)
 
             return {"score": score, "subscores": subscores, "seed": seed, "program": program}
 
