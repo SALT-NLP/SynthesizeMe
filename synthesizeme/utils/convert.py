@@ -1,8 +1,9 @@
 import pandas as pd
 import json
 from collections import defaultdict
+import random
 
-def parse_conversation_row(row: dict) -> list[dict]:
+def parse_conversation_row(row: dict, seed:int=42) -> list[dict]:
     """
     Process a single row (a dictionary with a "contents" field) to extract conversation
     entries based on the provided logic. It supports rows where "contents" is either
@@ -19,6 +20,9 @@ def parse_conversation_row(row: dict) -> list[dict]:
     last_chosen = None
     rejected_list = []
     turn = -1
+
+    # Set the random seed for reproducibility
+    rand = random.Random(seed)
 
     contents = row['contents']
     # If contents is stored as JSON string, decode it.
@@ -64,7 +68,8 @@ def parse_conversation_row(row: dict) -> list[dict]:
             entries.append({
                 'context': context[:],
                 'chosen': last_chosen,
-                'rejected': rejected
+                'rejected': rejected,
+                'flip': rand.choice([True, False])
             })
     return entries
 

@@ -56,8 +56,9 @@ def flip_augmentation(dspy_data):
 
 
 def convert_df_to_dspy(df, user_id=None):
+    rand = random.Random(user_id if user_id else 42)
     for i, row in df.iterrows():
-        flip = row["flip"] if "flip" in row else False
+        flip = row["flip"] if "flip" in row else rand.choice([True, False])
         yield dspy.Example({
             "conversation": format_conversation(row["context"]),
             "completion_one": format_conversation(row["chosen"]) if flip else format_conversation(row["rejected"]),

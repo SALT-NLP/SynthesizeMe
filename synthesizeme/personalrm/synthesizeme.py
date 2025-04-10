@@ -8,6 +8,7 @@ from synthesizeme.personalrm.personalrm import PersonalRM
 from synthesizeme.utils.utils import setup, exact_match, convert_df_to_dspy
 from synthesizeme.utils.dspy_methods import GeneratePersonaProgram, LLMAsAJudgeProgramPersona, LLMAsAJudgeProgram
 from synthesizeme.teleprompt.random_search import BootstrapFewShotWithRandomSearchFast
+from synthesizeme.utils.prompts import format_llm_judge_prompt, format_generation_prompt
 from platformdirs import user_data_dir
 
 class Unimplemented():
@@ -190,3 +191,56 @@ class SynthesizeMe(PersonalRM):
         self.program.save(path + self.user_id + ".json")
 
         return path + self.user_id + ".json"
+    
+    def get_persona(self):
+        """
+        Get the synthesized persona.
+        """
+        if self.persona is None:
+            raise ValueError("No persona synthesized. Please fit the model first.")
+
+        return self.persona
+    
+    def get_demos(self):
+        """
+        Get the optimized demonstrations.
+        """
+        if self.program == Unimplemented():
+            raise ValueError("Model not trained. Please train the model first using the fit method.")
+        if self.program is None:
+            raise ValueError("Model not trained. Please train the model first using the fit method.")
+        
+        demos = []
+        for example in self.program.judge_persona.predict.demos:
+            if example.augmented:
+                demos.append({"conversation": example.conversation, "first_completion": example.first_completion, "second_completion": example.second_completion, "reasoning": example.reasoning, "preference": example.preference})
+            else:
+                demos.append({"conversation": example.conversation, "first_completion": example.first_completion, "second_completion": example.second_completion, "preference": example.preference})
+
+        return demos
+
+    def get_generation_prompt(self):
+        """
+        Get the personalized generation prompt.
+        """
+        if self.persona is None:
+            raise ValueError("No persona synthesized. Please fit the model first.")
+        if self.program == Unimplemented():
+            raise ValueError("Model not trained. Please train the model first using the fit method.")
+        if self.program is None:
+            raise ValueError("Model not trained. Please train the model first using the fit method.")
+        
+        return format_generation_prompt(self.persona, self.get_demos())
+
+    def get_llm_judge_prompt(self):
+        """
+        Get the personalized reward model prompt.
+        """
+        if self.persona is None:
+            raise ValueError("No persona synthesized. Please fit the model first.")
+        if self.program == Unimplemented():
+            raise ValueError("Model not trained. Please train the model first using the fit method.")
+        if self.program is None:
+            raise ValueError("Model not trained. Please train the model first using the fit method.")
+        
+        return format_llm_judge_prompt(self.persona, self.get_demos())
