@@ -46,9 +46,6 @@ class SynthesizeMe(PersonalRM):
         """
         super().__init__()
 
-        if user_id is None:
-            user_id = uuid.uuid4().hex
-
         if output_dir is None:
             data_dir = user_data_dir("synthesizeme")
             data_dir = data_dir + "/users/"
@@ -81,6 +78,12 @@ class SynthesizeMe(PersonalRM):
     def fit(self, data, val_data=None):
         rng = random.Random(self.seed)
 
+        if self.user_id is None:
+            if hasattr(data[0], "user_id"):
+                self.user_id = data[0].user_id
+            else:
+                self.user_id = uuid.uuid4().hex
+
         if len(data) == 0:
             raise ValueError("No training preferences provided.")
         
@@ -109,8 +112,20 @@ class SynthesizeMe(PersonalRM):
         # First generate the persona
         generate_persona = GeneratePersonaProgram(output_dir=self.output_dir, max_bootstrapped_demos=max_bootstrapped_demos, max_labeled_demos=max_labeled_demos, num_threads_inner=self.num_workers, num_candidates=self.num_search_candidates, stop_at_score=self.stop_at_score, num_workers_bootstrap=self.num_workers_bootstrap, progress_update_hook=self.progress_update_hook)
 
-        if self.persona_synthesis_program_path is not None:
-            generate_persona.load(self.persona_synthesis_program_path)
+        try:
+            if self.persona_synthesis_program_path is not None:
+                generate_persona.load(self.persona_synthesis_program_path)
+        except Exception as e:
+            print(f"Error loading persona synthesis program: {e}")
+            print("This may be due to incompatibility between the version of dspy you are using and the version of dspy used to generate the program.")
+
+            import dspy
+            import json
+            print(f"You are using version {dspy.__version__}.")
+            program_version = json.load(open(self.persona_synthesis_program_path))['metadata']['dependency_versions']['dspy']
+            print(f"The program was generated using version {program_version}.")
+            print("You may need to install a compatible version of dspy.")
+            raise e
 
         # TODO: We need to put these train_preferences and val_preferences into the dspy format
         train_preferences = list(convert_df_to_dspy(pd.DataFrame(train_preferences)))
