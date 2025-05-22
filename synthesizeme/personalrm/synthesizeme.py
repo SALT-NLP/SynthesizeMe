@@ -6,11 +6,12 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from scipy.stats import bootstrap
 import numpy as np
-
+import tqdm
+import threading
 from synthesizeme.personalrm.personalrm import PersonalRM
 from synthesizeme.utils.utils import setup, exact_match, convert_df_to_dspy
 from synthesizeme.utils.dspy_methods import GeneratePersonaProgram, LLMAsAJudgeProgramPersona, LLMAsAJudgeProgram
-from synthesizeme.teleprompt.random_search import BootstrapFewShotWithRandomSearchFast
+from synthesizeme.dspy_patch.random_search import BootstrapFewShotWithRandomSearchFast
 from synthesizeme.utils.prompts import format_llm_judge_prompt, format_generation_prompt
 from platformdirs import user_data_dir
 
@@ -71,15 +72,43 @@ class SynthesizeMe(PersonalRM):
         self.lm = lm
         self.num_workers_bootstrap = num_workers_bootstrap
         self.progress_update_hook = progress_update_hook
+        self.last_progress = 0
+
+        # NEW: a lock to prevent race conditions in the progress-bar updates
+        self._progress_lock = threading.Lock()
+
+        if self.progress_update_hook is None:
+            self.pbar = True
+            self.progress_update_hook = self._default_progress_update_hook
+        else:
+            self.pbar = False
 
         self.program = Unimplemented()
 
         if self.lm is None:
             self.lm = setup(model=self.model_id, local_api_base=self.model_url)
 
+    # Default progress update hook (tqdm progress bar)
+    def _default_progress_update_hook(self, progress, message):
+            if self.pbar is None:
+                return
+
+            with self._progress_lock:                    # <<— LOCK GUARD
+                delta = progress - self.last_progress
+                if delta > 0:
+                    self.pbar.update(delta)
+                    self.pbar.set_description(message)
+                    self.last_progress = progress
+
+                if self.last_progress >= 100 or progress >= 100:
+                    self.pbar.close()
+                    self.pbar = None
 
     def fit(self, data, val_data=None):
         rng = random.Random(self.seed)
+
+        if self.pbar:
+            self.pbar = tqdm.tqdm(desc="Progress", leave=True, position=0, bar_format="{l_bar}{bar:10}{r_bar}", total=100)
 
         if self.user_id is None:
             if hasattr(data[0], "user_id"):
@@ -153,7 +182,7 @@ class SynthesizeMe(PersonalRM):
             stop_at_score=self.stop_at_score,
             metric=exact_match,
             num_workers=self.num_workers_bootstrap,
-            on_eval_complete=update_progress
+            on_eval_complete=update_progress,
         )
 
         program = LLMAsAJudgeProgramPersona(persona.persona)
@@ -301,6 +330,7 @@ class SynthesizeMe(PersonalRM):
             results_reversed = list(executor.map(self.predict_pairwise, prompts, rejected, chosen))
 
         overall_results = results + [-1 * result for result in results_reversed]
+        overall_results = [max(0, result) for result in overall_results]
 
         confidence_interval = bootstrap((overall_results, ), np.mean, confidence_level=0.95, method='basic')
 

@@ -1,9 +1,9 @@
 import random
 import concurrent.futures
 
-from dspy.evaluate.evaluate import Evaluate
+from synthesizeme.dspy_patch.evaluate import Evaluate
 from dspy.teleprompt.teleprompt import Teleprompter
-from dspy.teleprompt.bootstrap import BootstrapFewShot
+from synthesizeme.dspy_patch.bootstrap import BootstrapFewShot
 from dspy.teleprompt.vanilla import LabeledFewShot
 
 
@@ -22,6 +22,7 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
         metric_threshold=None,
         num_workers=20,
         on_eval_complete=None,
+        display_progress=False,
     ):
         self.metric = metric
         self.teacher_settings = teacher_settings
@@ -37,9 +38,11 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
         self.num_candidate_sets = num_candidate_programs
         self.max_labeled_demos = max_labeled_demos
         self.on_eval_complete = on_eval_complete
+        self.display_progress = display_progress
 
-        print(f"Going to sample between {self.min_num_samples} and {self.max_num_samples} traces per predictor.")
-        print(f"Will attempt to bootstrap {self.num_candidate_sets} candidate sets.")
+        if self.display_progress:
+            print(f"Going to sample between {self.min_num_samples} and {self.max_num_samples} traces per predictor.")
+            print(f"Will attempt to bootstrap {self.num_candidate_sets} candidate sets.")
 
     def compile(
         self,
@@ -102,6 +105,7 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
                     teacher_settings=self.teacher_settings,
                     max_rounds=self.max_rounds,
                     max_errors=self.max_errors,
+                    display_progress=self.display_progress,
                 )
                 program = optimizer.compile(student, teacher=teacher, trainset=trainset_copy)
 
@@ -111,7 +115,7 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
                 num_threads=self.num_threads,
                 max_errors=self.max_errors,
                 display_table=False,
-                display_progress=True,
+                display_progress=self.display_progress,
             )
 
             score, subscores = evaluate(program, return_all_scores=True)
@@ -144,11 +148,14 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
             subscores = result["subscores"]
 
             if len(scores) == 0 or score > max(scores):
-                print("New best score:", score, "for seed", seed)
+                if self.display_progress:
+                    print("New best score:", score, "for seed", seed)
                 best_program = program
             scores.append(score)
-            print(f"Scores so far: {scores}")
-            print(f"Best score so far: {max(scores)}")
+            
+            if self.display_progress:
+                print(f"Scores so far: {scores}")
+                print(f"Best score so far: {max(scores)}")
 
             score_data.append({
                 "score": score,
@@ -158,11 +165,13 @@ class BootstrapFewShotWithRandomSearchFast(Teleprompter):
             })
 
             if self.stop_at_score is not None and score >= self.stop_at_score:
-                print(f"Stopping early because score {score} is >= stop_at_score {self.stop_at_score}")
+                if self.display_progress:
+                    print(f"Stopping early because score {score} is >= stop_at_score {self.stop_at_score}")
                 break
 
         # Attach candidate programs sorted by score (highest first) to best_program.
         best_program.candidate_programs = sorted(score_data, key=lambda x: x["score"], reverse=True)
-        print(f"{len(best_program.candidate_programs)} candidate programs found.")
+        if self.display_progress:
+            print(f"{len(best_program.candidate_programs)} candidate programs found.")
 
         return best_program

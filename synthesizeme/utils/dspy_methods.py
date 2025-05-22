@@ -1,9 +1,11 @@
 import dspy
 import os
-
-from synthesizeme.teleprompt.random_search import BootstrapFewShotWithRandomSearchFast
+from synthesizeme.dspy_patch.random_search import BootstrapFewShotWithRandomSearchFast
 from synthesizeme.utils.utils import exact_match, repeat_dspy_call
 from typing import Literal
+import logging
+
+logging.getLogger("dspy").setLevel(logging.WARNING)
 
 DEFAULT_PERSONA_PROMPT = """Given a conversation and two completions from different models, alongside some prior judgements and a user persona, determine which completion the human judge is more likely to prefer.  Use any provided context as well as the provided persona to speculate about the personal preferences of the judge.  You are a personalized reward model for this user, so think carefully about what this user will like."""
 
