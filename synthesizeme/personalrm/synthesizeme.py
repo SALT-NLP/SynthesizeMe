@@ -3,6 +3,9 @@ import pandas as pd
 import uuid
 import importlib.resources
 import os
+from concurrent.futures import ThreadPoolExecutor
+from scipy.stats import bootstrap
+import numpy as np
 
 from synthesizeme.personalrm.personalrm import PersonalRM
 from synthesizeme.utils.utils import setup, exact_match, convert_df_to_dspy
@@ -177,7 +180,14 @@ class SynthesizeMe(PersonalRM):
         if self.program is None:
             raise ValueError("Model not trained. Please train the model first using the fit method.")
         
-        return self.program.predict(context=context, completion_one=option1, completion_two=option2)
+        result = self.program(conversation=context, completion_one=option1, completion_two=option2).preference
+
+        if result == "First":
+            return 1
+        elif result == "Second":
+            return -1
+        else:
+            return 0
 
     def load(self, path=user_data_dir("synthesizeme") + "/users/"):
         """
@@ -270,3 +280,32 @@ class SynthesizeMe(PersonalRM):
             raise ValueError("Model not trained. Please train the model first using the fit method.")
         
         return format_llm_judge_prompt(self.persona, self.get_demos())
+    
+    def evaluate(self, test_data: list):
+        """
+        Evaluate the model on the test data.
+        """
+        if self.num_workers is None:
+            self.num_workers = 1
+
+        test_preferences = list(convert_df_to_dspy(pd.DataFrame(test_data)))
+
+        prompts = [example["conversation"] for example in test_preferences]
+        chosen = [example["completion_one"] if example["chosen"] == "First" else example["completion_two"] for example in test_preferences]
+        rejected = [example["completion_two"] if example["chosen"] == "First" else example["completion_one"] for example in test_preferences]
+
+        with ThreadPoolExecutor(self.num_workers) as executor:
+            results = list(executor.map(self.predict_pairwise, prompts, chosen, rejected))
+
+        with ThreadPoolExecutor(self.num_workers) as executor:
+            results_reversed = list(executor.map(self.predict_pairwise, prompts, rejected, chosen))
+
+        overall_results = results + [-1 * result for result in results_reversed]
+
+        confidence_interval = bootstrap((overall_results, ), np.mean, confidence_level=0.95, method='basic')
+
+        return {
+            "mean": np.mean(overall_results),
+            "lower_bound": confidence_interval.confidence_interval.low,
+            "upper_bound": confidence_interval.confidence_interval.high,
+        }

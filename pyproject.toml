@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 #replace_package_name_marker
 name="SynthesizeMe"
 #replace_package_version_marker
-version="0.0.7-alpha.2"
+version="0.0.8-alpha.1"
 description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
 readme = "README.md"
 authors = [{ name = "Michael Ryan", email = "michaeljryan@stanford.edu" }]
@@ -26,7 +26,10 @@ classifiers = [
 # `pip install .` will pull from pyproject.toml dependencies
 dependencies = [
     "dspy",
-    "platformdirs"
+    "platformdirs",
+    "numpy",
+    "scipy",
+    "pandas"
 ]
 
 [tool.setuptools.packages.find]
@@ -45,7 +48,7 @@ homepage = "https://github.com/XenonMolecule/SynthesizeMe"
 
 [tool.poetry]
 name = "synthesizeme"
-version = "0.0.7-alpha.2"
+version = "0.0.8-alpha.1"
 description = "Learn what Language Models think about you! Synthesize personas from your LLM interactions."
 authors = ["Michael Ryan <michaeljryan@stanford.edu>"]
 license = "MIT"
