@@ -308,4 +308,5 @@ class SynthesizeMe(PersonalRM):
             "mean": np.mean(overall_results),
             "lower_bound": confidence_interval.confidence_interval.low,
             "upper_bound": confidence_interval.confidence_interval.high,
+            "results": overall_results
         }
