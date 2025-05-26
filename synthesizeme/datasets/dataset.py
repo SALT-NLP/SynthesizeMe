@@ -44,7 +44,7 @@ class SynthesizeMeDataset(Dataset):
     def get_dataframe(self, split: str="train"):
         if split == "all":
             return self.joint_df
-        return self.joint_df[self.joint_df['split'] == split]
+        return self.ds[split].to_pandas()
 
     def get_user_data_df(self, user_id: str):
         return self.joint_df[self.joint_df['user_id'] == user_id]
