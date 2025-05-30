@@ -118,9 +118,13 @@ class GeneratePersonaProgram(dspy.Module):
         if self.progress_update_hook is not None:
             self.progress_update_hook(50.0, f"Synthesizing Persona based on bootstrapped reasoning.")
         # Synthesize a persona from the bootstrapped reasoning
+        synthesized_persona = None
+        iterations = 0
         while True:
+            iterations += 1
             try:
-                if len(history_str) < 8192:
+                if iterations > 10:
+                    synthesized_persona = "Could not synthesize a persona from the bootstrapped reasoning."
                     break
                 synthesized_persona = self.synthesize(past_judgements=history_str)
                 break
