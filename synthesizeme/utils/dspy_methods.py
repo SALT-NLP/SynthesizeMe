@@ -117,13 +117,16 @@ class GeneratePersonaProgram(dspy.Module):
 
         if self.progress_update_hook is not None:
             self.progress_update_hook(50.0, f"Synthesizing Persona based on bootstrapped reasoning.")
-
-        # Truncate the history to 65536 characters to avoid LLM max token limit
-        if len(history_str) > 65536:
-            history_str = history_str[:65536]
-
         # Synthesize a persona from the bootstrapped reasoning
-        synthesized_persona = self.synthesize(past_judgements=history_str)
+        while True:
+            try:
+                if len(history_str) < 8192:
+                    break
+                synthesized_persona = self.synthesize(past_judgements=history_str)
+                break
+            except Exception as e:
+                print(f"Error synthesizing persona: {e}")
+                history_str = history_str[:len(history_str)*0.9]
 
         if self.progress_update_hook is not None:
             self.progress_update_hook(50.0, f"Done synthesizing persona based on bootstrapped reasoning.")
