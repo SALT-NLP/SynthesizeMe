@@ -1,6 +1,8 @@
 # SynthesizeMe
 [![PyPI version](https://badge.fury.io/py/SynthesizeMe.svg)](https://badge.fury.io/py/SynthesizeMe) [![arXiv](https://img.shields.io/badge/arXiv-2506.05598-b31b1b.svg)](https://arxiv.org/abs/2506.05598)
 
+![A cyber enhanced woman with blue and purple hair next to the title text 'SynthesizeMe'](img/Logo.png)
+
 Learn what Language Models think about you!  Synthesize personas from your LLM interactions.
 
 This repository contains the official implementation of the core algorithm from the paper: [SynthesizeMe! Inducing Persona-Guided Prompts for Personalized Reward Models in LLMs](https://arxiv.org/abs/2506.05598).
@@ -21,7 +23,8 @@ cd SynthesizeMe
 pip install -e .
 ```
 
-### Configuring Language Models
+<details>
+<summary><b>Configuring Language Models</b></summary>
 
 `SynthesizeMe` uses `litellm` to connect to a variety of language models from different providers. To use a specific model, you need to pass its `model_id` when initializing the `SynthesizeMe` or `DefaultJudge` class. For API models, you will also need to set the appropriate API key as an environment variable.
 
@@ -63,6 +66,7 @@ rm = SynthesizeMe(model_id='openai/gpt-4o-mini-2024-07-18')
 # Using a local model
 rm = SynthesizeMe(model_id='Qwen/Qwen2-7B-Instruct', model_url='http://localhost:8000/v1')
 ```
+</details>
 
 ## Usage
 
@@ -109,7 +113,8 @@ print(evaluation_results)
 
 For a more detailed walkthrough, please see the example notebook in `examples/prism.ipynb`. This notebook demonstrates how to load data, train a model, and inspect the outputs.
 
-## API Reference
+<details>
+<summary><b>API Reference</b></summary>
 
 This section provides a reference for the core components of the `SynthesizeMe` library.
 
@@ -200,7 +205,10 @@ Evaluates the performance of the default judge on a test set.
 
 *Note: The `DefaultJudge` class does not implement the `fit`, `save`, or `load` methods as it is not a trainable model.*
 
+</details>
+
 ## How SynthesizeMe Works
+![A diagram showing the three stages of the SynthesizeMe algorithm: Bootstrap Reasoning, Persona Induction, and Demo Selection](img/Figure.png)
 
 SynthesizeMe turns **N ≈ 5–15** raw preferences into a personalized prompt in three **verification‑driven stages**:
 
