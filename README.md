@@ -18,7 +18,7 @@ pip install SynthesizeMe
 Alternatively, for development purposes, you can install it from the source:
 
 ```bash
-git clone https://github.com/XenonMolecule/SynthesizeMe.git
+git clone https://github.com/SALT-NLP/SynthesizeMe.git
 cd SynthesizeMe
 pip install -e .
 ```
