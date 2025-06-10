@@ -5,7 +5,7 @@
 
 Learn what Language Models think about you!  Synthesize personas from your LLM interactions.
 
-This repository contains the official implementation of the core algorithm from the paper: [SynthesizeMe! Inducing Persona-Guided Prompts for Personalized Reward Models in LLMs](https://arxiv.org/abs/2506.05598).
+This repository contains the official implementation of the core algorithm from the ACL 2025 paper: [SynthesizeMe! Inducing Persona-Guided Prompts for Personalized Reward Models in LLMs](https://arxiv.org/abs/2506.05598).
 
 ## Setup
 
