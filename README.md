@@ -113,18 +113,25 @@ print(evaluation_results)
 
 For a more detailed walkthrough, please see the example notebook in `examples/prism.ipynb`. This notebook demonstrates how to load data, train a model, and inspect the outputs.
 
-<details>
-<summary><b>API Reference</b></summary>
+## API Reference
 
 This section provides a reference for the core components of the `SynthesizeMe` library.
 
 ### Input Data Format
 
-Both `SynthesizeMe` and `DefaultJudge` expect the same input data format for training and evaluation. The `fit` method (for `SynthesizeMe`) and `evaluate` method (for both classes) expect a list of preference dictionaries. Each dictionary represents a single pairwise preference from a user and must contain the following keys:
+Both `SynthesizeMe` and `DefaultJudge` expect the same input data format for training and evaluation. The `fit` method (for `SynthesizeMe`) and `evaluate` method (for both classes) expect a list of preference dictionaries. Each dictionary represents a single pairwise preference from a user and must contain the following keys: `context`, `chosen`, and `rejected`.
 
--   `context`: A list of dictionaries representing the conversation history, where each dictionary has a `role` (e.g., 'user', 'assistant') and `content` (the text of the turn).
--   `chosen`: A dictionary representing the response the user preferred. It must have `role` and `content` keys.
--   `rejected`: A dictionary representing the response the user did not prefer. It must have `role` and `content` keys.
+<details>
+<summary>Show data format example</summary>
+
+The keys are structured as follows:
+-   `context`: A list of dictionaries representing the conversation history, where 
+each dictionary has a `role` (e.g., 'user', 'assistant') and `content` (the text of 
+the turn).
+-   `chosen`: A dictionary representing the response the user preferred. It must have 
+`role` and `content` keys.
+-   `rejected`: A dictionary representing the response the user did not prefer. It 
+must have `role` and `content` keys.
 
 Here is an example of a single preference item:
 ```python
@@ -143,9 +150,14 @@ Here is an example of a single preference item:
 }
 ```
 
+</details>
+
 ### The `SynthesizeMe` Class
 
-This is the main class for creating and managing your personalized reward model.
+This is the main class for creating and managing your personalized reward model. It synthesizes a user persona and optimizes a set of demonstrations to create a powerful, personalized few-shot prompt.
+
+<details>
+<summary>View method details</summary>
 
 #### `__init__(self, ...)`
 Initializes the `SynthesizeMe` object. Key parameters include:
@@ -185,9 +197,14 @@ Returns a complete, personalized prompt string for use with an LLM-as-a-Judge, s
 #### `save(self, path)` & `load(self, path)`
 Saves the trained model (persona and optimized prompt) to a specified path and loads it back. The `user_id` is used to name the files.
 
+</details>
+
 ### The `DefaultJudge` Class
 
 The `DefaultJudge` class serves as a non-personalized baseline reward model. It uses a general-purpose LLM-as-a-Judge prompt without any persona synthesis or demonstration optimization. This is useful for evaluating the performance lift gained from personalization with `SynthesizeMe`.
+
+<details>
+<summary>View method details</summary>
 
 #### `__init__(self, ...)`
 Initializes the `DefaultJudge` object. Key parameters include:
